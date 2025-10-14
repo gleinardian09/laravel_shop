@@ -1,0 +1,60 @@
+how to make admin
+
+
+php artisan tinker
+
+// Update directly in database
+DB::table('users')->where('id', 1)->update(['is_admin' => true]);
+
+// Or if you're not sure of the ID, find by email
+DB::table('users')->where('email', 'your-email@example.com')->update(['is_admin' => true]);
+
+./vendor/bin/pest > test-results.txt
+
+after start
+npm run dev
+php artisan serve
+
+if gikan github 
+git clone https://github.com/yourusername/yourproject.git
+cd yourproject
+
+composer install
+npm install && npm run dev
+
+configure .env file
+APP_NAME=ShopApp
+APP_URL=http://localhost:8000
+DB_DATABASE=your_database
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+
+
+php artisan key:generate
+php artisan storage:link
+
+
+recommended for migration
+e run ni una by part gyud sya para wlay fk problems
+php artisan migrate --path=database/migrations/xxxx_create_users_table.php
+php artisan migrate --path=database/migrations/xxxx_create_password_resets_table.php
+php artisan migrate --path=database/migrations/xxxx_create_categories_table.php
+
+next
+php artisan migrate --path=database/migrations/xxxx_create_products_table.php
+php artisan migrate --path=database/migrations/xxxx_create_reviews_table.php
+
+next
+php artisan migrate --path=database/migrations/xxxx_create_orders_table.php
+php artisan migrate --path=database/migrations/xxxx_create_order_items_table.php
+php artisan migrate --path=database/migrations/xxxx_create_cart_items_table.php
+
+next
+php artisan migrate --path=database/migrations/xxxx_create_wishlists_table.php
+
+next
+php artisan migrate --path=database/migrations/xxxx_create_user_profiles_table.php
+
+
+php artisan test
+Tests:  72 passed (163 assertions)
