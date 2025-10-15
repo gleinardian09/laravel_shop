@@ -9,9 +9,60 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request) // Add Request parameter
     {
-        $categories = Category::withCount('products')->latest()->paginate(10);
+        $query = Category::query()->withCount('products');
+
+        // Search functionality
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Product count filter
+        if ($request->has('products_count') && $request->products_count) {
+            switch ($request->products_count) {
+                case 'no_products':
+                    $query->has('products', '=', 0);
+                    break;
+                case 'has_products':
+                    $query->has('products', '>', 0);
+                    break;
+                case 'many_products':
+                    $query->has('products', '>=', 5);
+                    break;
+            }
+        }
+
+        // Sort functionality
+        $sort = $request->get('sort', 'latest');
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'products_asc':
+                $query->withCount('products')->orderBy('products_count', 'asc');
+                break;
+            case 'products_desc':
+                $query->withCount('products')->orderBy('products_count', 'desc');
+                break;
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            default: // latest
+                $query->latest();
+                break;
+        }
+
+        $categories = $query->paginate(10);
+
         return view('admin.categories.index', compact('categories'));
     }
 

@@ -6,20 +6,74 @@ use App\Http\Controllers\Controller;
 use App\Models\Subcategory;
 use App\Models\Category;
 use App\Http\Requests\Admin\SubcategoryRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class SubcategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request) // Add Request parameter
     {
         $this->authorizeAdmin();
 
-        $subcategories = Subcategory::with('category')
-            ->orderBy('category_id')
-            ->orderBy('order')
-            ->get();
+        $query = Subcategory::query()->with('category');
 
-        return view('admin.subcategories.index', compact('subcategories'));
+        // Search functionality
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('category', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Category filter
+        if ($request->has('category') && $request->category) {
+            $query->where('category_id', $request->category);
+        }
+
+        // Status filter
+        if ($request->has('status') && $request->status) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        // Sort functionality
+        $sort = $request->get('sort', 'category_order');
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'order_asc':
+                $query->orderBy('order', 'asc');
+                break;
+            case 'order_desc':
+                $query->orderBy('order', 'desc');
+                break;
+            case 'latest':
+                $query->latest();
+                break;
+            case 'oldest':
+                $query->oldest();
+                break;
+            default: // category_order
+                $query->orderBy('category_id')->orderBy('order');
+                break;
+        }
+
+        $subcategories = $query->get();
+        $categories = Category::where('is_active', true)->get(); // For filter dropdown
+
+        return view('admin.subcategories.index', compact('subcategories', 'categories'));
     }
 
     public function create()

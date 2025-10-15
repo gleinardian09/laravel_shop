@@ -24,58 +24,45 @@ class CartController extends Controller
         return view('cart.index', compact('cartItems', 'total'));
     }
 
-    public function add($productId, Request $request)
-    {
-        $product = Product::findOrFail($productId);
+   public function add(Product $product, Request $request)
+{
+    // Validate quantity
+    $request->validate([
+        'quantity' => 'required|integer|min:1'
+    ]);
 
-        $request->validate([
-            'quantity' => 'required|integer|min:1'
-        ]);
+    $quantity = $request->quantity ?? 1;
 
-        $quantity = $request->quantity ?? 1;
+    try {
+        DB::transaction(function () use ($product, $quantity) {
+            $cartItem = $this->getCartItemByProduct($product->id);
 
-        try {
-            DB::transaction(function () use ($product, $quantity) {
-                $cartItem = $this->getCartItemByProduct($product->id);
+            $totalQuantity = $cartItem ? ($cartItem->quantity + $quantity) : $quantity;
 
-                \Log::info('Cart Add Transaction', [
+            if ($totalQuantity > $product->stock) {
+                throw new \Exception('Cannot add more than available stock.');
+            }
+
+            if ($cartItem) {
+                // Update existing cart item
+                $cartItem->update(['quantity' => $totalQuantity]);
+            } else {
+                // Create new cart item
+                CartItem::create([
                     'product_id' => $product->id,
                     'quantity' => $quantity,
-                    'existing_item' => $cartItem ? $cartItem->id : 'none',
-                    'session_id' => session()->getId(),
                     'user_id' => auth()->id(),
+                    'session_id' => $this->getStableSessionId(),
                 ]);
+            }
+        });
 
-                $totalQuantity = $cartItem ? ($cartItem->quantity + $quantity) : $quantity;
-
-                if ($totalQuantity > $product->stock) {
-                    throw new \Exception('Cannot add more than available stock.');
-                }
-
-                if ($cartItem) {
-                    // Update existing cart item
-                    $cartItem->update(['quantity' => $totalQuantity]);
-                    \Log::info("Updated cart item {$cartItem->id} to quantity {$totalQuantity}");
-                } else {
-                    // Create new cart item
-                    $cartItemData = [
-                        'product_id' => $product->id,
-                        'quantity' => $quantity,
-                        'user_id' => auth()->id(),
-                        'session_id' => $this->getStableSessionId(),
-                    ];
-
-                    $newItem = CartItem::create($cartItemData);
-                    \Log::info("Created new cart item: {$newItem->id}");
-                }
-            });
-
-            return redirect()->route('cart.index')->with('success', 'Product added to cart successfully!');
-        } catch (\Exception $e) {
-            \Log::error('Cart add error: ' . $e->getMessage());
-            return back()->with('error', $e->getMessage());
-        }
+        return redirect()->route('cart.index')->with('success', 'Product added to cart successfully!');
+    } catch (\Exception $e) {
+        return back()->with('error', $e->getMessage());
     }
+}
+
 
     public function update(CartItem $cartItem, Request $request)
     {
