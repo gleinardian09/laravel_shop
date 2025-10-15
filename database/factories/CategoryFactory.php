@@ -17,4 +17,13 @@ class CategoryFactory extends Factory
             'is_active' => true,
         ];
     }
+
+    // ✅ Custom state method used in your test
+    public function named($name)
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => $name,
+            'slug' => \Str::slug($name),
+        ]);
+    }
 }

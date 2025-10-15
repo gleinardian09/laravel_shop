@@ -15,6 +15,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\SubcategoryController;
 
 // New dynamic home page
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -103,6 +104,15 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/categories/{category}/edit', [AdminCategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{category}', [AdminCategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{category}', [AdminCategoryController::class, 'destroy'])->name('categories.destroy');
+
+    // Subcategories routes with manual admin check
+Route::get('/subcategories', [SubcategoryController::class, 'index'])->name('subcategories.index');
+Route::get('/subcategories/create', [SubcategoryController::class, 'create'])->name('subcategories.create');
+Route::post('/subcategories', [SubcategoryController::class, 'store'])->name('subcategories.store');
+Route::get('/subcategories/{subcategory}', [SubcategoryController::class, 'show'])->name('subcategories.show');
+Route::get('/subcategories/{subcategory}/edit', [SubcategoryController::class, 'edit'])->name('subcategories.edit');
+Route::put('/subcategories/{subcategory}', [SubcategoryController::class, 'update'])->name('subcategories.update');
+Route::delete('/subcategories/{subcategory}', [SubcategoryController::class, 'destroy'])->name('subcategories.destroy');
     
     // Orders routes with manual admin check
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');

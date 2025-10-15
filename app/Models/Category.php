@@ -21,6 +21,11 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+    public function subcategories()
+{
+    return $this->hasMany(\App\Models\Subcategory::class);
+}
+
 
     public function getRouteKeyName()
     {
