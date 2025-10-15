@@ -62,7 +62,6 @@ class Product extends Model
         return $allImages;
     }
 
-    // Keep your existing methods...
     public function getRouteKeyName()
     {
         return 'slug';
@@ -156,37 +155,37 @@ class Product extends Model
                 return $query->orderBy('created_at', 'desc');
         }
     }
-    // Add this method to your Product model
-public function getHighQualityImageUrl($imagePath = null)
-{
-    if (!$imagePath) {
-        if ($this->images->count() > 0) {
-            $primaryImage = $this->images->where('is_primary', true)->first();
-            $imagePath = $primaryImage ? $primaryImage->image_path : $this->images->first()->image_path;
-        } else {
-            $imagePath = $this->image;
+
+    public function getHighQualityImageUrl($imagePath = null)
+    {
+        if (!$imagePath) {
+            if ($this->images->count() > 0) {
+                $primaryImage = $this->images->where('is_primary', true)->first();
+                $imagePath = $primaryImage ? $primaryImage->image_path : $this->images->first()->image_path;
+            } else {
+                $imagePath = $this->image;
+            }
         }
+        
+        return $imagePath ? asset('storage/' . $imagePath) . '?t=' . time() : null;
     }
-    
-    return $imagePath ? asset('storage/' . $imagePath) . '?t=' . time() : null;
-}
-// Automatically generate slug from name if not provided
-protected static function boot()
-{
-    parent::boot();
 
-    static::creating(function ($product) {
-        if (empty($product->slug)) {
-            $product->slug = \Illuminate\Support\Str::slug($product->name);
-        }
-    });
+    // Automatically generate slug from name if not provided
+    protected static function boot()
+    {
+        parent::boot();
 
-    static::updating(function ($product) {
-        // Optional: update slug if name changes
-        if ($product->isDirty('name') && empty($product->slug)) {
-            $product->slug = \Illuminate\Support\Str::slug($product->name);
-        }
-    });
-}
+        static::creating(function ($product) {
+            if (empty($product->slug)) {
+                $product->slug = \Illuminate\Support\Str::slug($product->name);
+            }
+        });
 
+        static::updating(function ($product) {
+            // Update slug if name changes
+            if ($product->isDirty('name')) {
+                $product->slug = \Illuminate\Support\Str::slug($product->name);
+            }
+        });
+    }
 }

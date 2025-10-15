@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductImage;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    public function index(Request $request) // Add Request $request parameter
+    public function index(Request $request)
     {
         if (!auth()->user()->is_admin) {
             abort(403, 'Unauthorized action. Admin privileges required.');
@@ -68,9 +69,9 @@ class ProductController extends Controller
         }
 
         $products = $query->latest()->paginate(10);
-        $categories = Category::all(); // Add this line to get categories
+        $categories = Category::all();
 
-        return view('admin.products.index', compact('products', 'categories')); // Add categories here
+        return view('admin.products.index', compact('products', 'categories'));
     }
 
     public function create()
@@ -96,14 +97,34 @@ class ProductController extends Controller
             'stock' => 'required|integer|min:0',
             'category_id' => 'required|exists:categories,id',
             'is_active' => 'boolean',
-            'image' => 'required|image|max:2048',
+            'images' => 'required|array|min:1',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
-        }
+        // Create the product
+        $product = Product::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+            'stock' => $validated['stock'],
+            'category_id' => $validated['category_id'],
+            'is_active' => $request->has('is_active'),
+            'slug' => \Illuminate\Support\Str::slug($validated['name'])
+        ]);
 
-        Product::create($validated);
+        // Handle multiple images
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $index => $image) {
+                $imagePath = $image->store('products', 'public');
+                
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'image_path' => $imagePath,
+                    'is_primary' => $index === 0, // First image is primary
+                    'sort_order' => $index
+                ]);
+            }
+        }
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product created successfully.');
@@ -141,17 +162,56 @@ class ProductController extends Controller
             'stock' => 'required|integer|min:0',
             'category_id' => 'required|exists:categories,id',
             'is_active' => 'boolean',
-            'image' => 'sometimes|image|max:2048',
+            'images' => 'sometimes|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'primary_image' => 'sometimes|exists:product_images,id',
+            'delete_images' => 'sometimes|array',
+            'delete_images.*' => 'exists:product_images,id',
         ]);
 
-        if ($request->hasFile('image')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $validated['image'] = $request->file('image')->store('products', 'public');
+        // Update product
+        $product->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+            'stock' => $validated['stock'],
+            'category_id' => $validated['category_id'],
+            'is_active' => $request->has('is_active'),
+            'slug' => \Illuminate\Support\Str::slug($validated['name'])
+        ]);
+
+        // Handle primary image change
+        if ($request->has('primary_image')) {
+            // Remove primary from all images
+            ProductImage::where('product_id', $product->id)->update(['is_primary' => false]);
+            // Set new primary
+            ProductImage::where('id', $request->primary_image)->update(['is_primary' => true]);
         }
 
-        $product->update($validated);
+        // Handle image deletion
+        if ($request->has('delete_images')) {
+            $imagesToDelete = ProductImage::whereIn('id', $request->delete_images)->get();
+            foreach ($imagesToDelete as $image) {
+                Storage::disk('public')->delete($image->image_path);
+                $image->delete();
+            }
+        }
+
+        // Handle new images
+        if ($request->hasFile('images')) {
+            $currentMaxOrder = ProductImage::where('product_id', $product->id)->max('sort_order') ?? -1;
+            
+            foreach ($request->file('images') as $index => $image) {
+                $imagePath = $image->store('products', 'public');
+                
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'image_path' => $imagePath,
+                    'is_primary' => false, // Don't set new images as primary by default
+                    'sort_order' => $currentMaxOrder + $index + 1
+                ]);
+            }
+        }
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product updated successfully.');
@@ -163,10 +223,13 @@ class ProductController extends Controller
             abort(403, 'Unauthorized action. Admin privileges required.');
         }
 
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+        // Delete product images
+        foreach ($product->images as $image) {
+            Storage::disk('public')->delete($image->image_path);
+            $image->delete();
         }
 
+        // Delete the product
         $product->delete();
 
         return redirect()->route('admin.products.index')

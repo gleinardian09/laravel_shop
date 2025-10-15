@@ -58,3 +58,6 @@ php artisan migrate --path=database/migrations/xxxx_create_user_profiles_table.p
 
 php artisan test
 Tests:  72 passed (163 assertions)
+git add .
+git commit -m "describe your changes"
+git push

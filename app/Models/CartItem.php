@@ -10,8 +10,8 @@ class CartItem extends Model
     use HasFactory;
 
     protected $fillable = ['session_id', 'user_id', 'product_id', 'quantity'];
+    // Remove 'price' from fillable since the column doesn't exist
 
-    // ADD THIS BOOT METHOD:
     public static function boot()
     {
         parent::boot();

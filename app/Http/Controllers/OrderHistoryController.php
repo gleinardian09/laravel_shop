@@ -79,29 +79,29 @@ class OrderHistoryController extends Controller
                 \Log::info("Product found:", [
                     'product_id' => $product->id,
                     'product_name' => $product->name,
-                    'is_available' => $product->is_available,
-                    'stock_quantity' => $product->stock_quantity,
+                    'is_active' => $product->is_active,
+                    'stock' => $product->stock,
                     'price' => $product->price
                 ]);
 
-                // Check if product is available
-                if (!$product->is_available) {
-                    \Log::warning("Product is not available", [
+                // Check if product is active - FIXED: Changed from is_available to is_active
+                if (!$product->is_active) {
+                    \Log::warning("Product is not active", [
                         'product_id' => $product->id,
-                        'is_available' => $product->is_available
+                        'is_active' => $product->is_active
                     ]);
                     $unavailableItems[] = $product->name;
                     continue;
                 }
 
-                // Check if product is in stock
-                if ($product->stock_quantity < $orderItem->quantity) {
+                // Check if product is in stock - FIXED: Changed from stock_quantity to stock
+                if ($product->stock < $orderItem->quantity) {
                     \Log::warning("Insufficient stock", [
                         'product_id' => $product->id,
                         'required' => $orderItem->quantity,
-                        'available' => $product->stock_quantity
+                        'available' => $product->stock
                     ]);
-                    $outOfStockItems[] = "{$product->name} (Only {$product->stock_quantity} in stock)";
+                    $outOfStockItems[] = "{$product->name} (Only {$product->stock} in stock)";
                     continue;
                 }
 
